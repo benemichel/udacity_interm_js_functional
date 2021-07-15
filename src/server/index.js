@@ -21,13 +21,19 @@ app.get('/rovers/:rover', async (req, res) => {
 
     try {
         let missionManifest = await fetch(`https://api.nasa.gov/mars-photos/api/v1/manifests/${roverName}?api_key=${process.env.API_KEY}`)
-            .then(res => res.json().then( data => data.photo_manifest))
+            .then(res => res.json().then( data => {
+                const manifest = data.photo_manifest
 
-        // const maxSol = res.photo_manifest.max_sol
-        //
-        // let lastPhotos = await fetch(`https://api.nasa.gov/mars-photos/api/v1/rovers/${roverName}/photos?sol=${maxSol}&api_key=${process.env.API_KEY}`)
-        //     .then(res => res.json())
-        // res.send(lastPhotos)
+                return {
+                    name: manifest.name,
+                    landing_date: manifest.landing_date,
+                    launch_date: manifest.launch_date,
+                    max_date: manifest.max_date,
+                    max_sol: manifest.max_sol,
+                    status: manifest.status
+                }
+            }))
+
         res.send(missionManifest)
         res.status(200);
     } catch (err) {
@@ -43,8 +49,6 @@ app.get('/rovers/:rover/images', async (req, res) => {
     const query = req.query
     const maxSol = query.max_sol
 
-    console.log(rover)
-    console.log(maxSol)
 
     try {
         let images = await fetch(`https://api.nasa.gov/mars-photos/api/v1/rovers/${roverName}/photos?sol=${maxSol}&api_key=${process.env.API_KEY}`)
@@ -53,6 +57,7 @@ app.get('/rovers/:rover/images', async (req, res) => {
         res.status(200);
     } catch (err) {
         console.log('error:', err);
+        res.status(500);
     }
 })
 

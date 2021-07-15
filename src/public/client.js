@@ -1,8 +1,8 @@
 let store = {
-    user: {name: "Student"},
     rovers: ['Curiosity', 'Opportunity', 'Spirit'],
     roverManifests: [],
-    alreadyRequested: false
+    alreadyRequested: false,
+    roverImages: [],
 }
 
 // add our markup to the page
@@ -10,35 +10,27 @@ const root = document.getElementById('root')
 
 const updateStore = (store, newState) => {
     store = Object.assign(store, newState)
+    console.log("store update with:", newState)
     // render(root, store)
 }
 
 const render = async (root, state) => {
+    // render app with updated state
     root.innerHTML = App(state)
 }
 
 
 // create content
 const App = (state) => {
-    let {rovers} = state
-    let {roverManifests} = state
 
     return `
-        <header></header>
+        <header>${Header()}</header>
         <main>
-            ${Greeting(store.user.name)}
+            
             <section>
-                <h3>Put things on the page!</h3>
-                <p>Here is an example section.</p>
-                <p>
-                    One of the most popular websites at NASA is the Astronomy Picture of the Day. In fact, this website is one of
-                    the most popular websites across all federal agencies. It has the popular appeal of a Justin Bieber video.
-                    This endpoint structures the APOD imagery and associated metadata so that it can be repurposed for other
-                    applications. In addition, if the concept_tags parameter is set to True, then keywords derived from the image
-                    explanation are returned. These keywords could be used as auto-generated hashtags for twitter or instagram feeds;
-                    but generally help with discoverability of relevant imagery.
-                </p>
-                ${ImageOfTheDay(roverManifests)}
+                ${Tabs(state.rovers)}
+                ${TabContent()}
+                ${renderInformation()}
             </section>
         </main>
         <footer></footer>
@@ -50,23 +42,39 @@ window.addEventListener('load', () => {
     render(root, store)
 })
 
+
 // ------------------------------------------------------  COMPONENTS
 
-// Pure function that renders conditional information -- THIS IS JUST AN EXAMPLE, you can delete it.
-const Greeting = (name) => {
-    if (name) {
-        return `
-            <h1>Welcome, ${name}!</h1>
-        `
+// Pure function that renders conditional information
+const Header = () => {
+    return ` <h1 class="title">Welcome Commander!</h1> 
+            <h2 class="subtitle">To your Mars mission control panel </h2>`
+}
+
+const Tabs = (rovers) => {
+    if (rovers) {
+
+        const tablinks = [];
+        rovers.forEach(rover => {
+            tablinks.push(`<button class="tablinks">${rover}</button>`)
+        })
+        return `<div class="tab">${tablinks.join("")} </div> `
     }
 
     return `
-        <h1>Hello!</h1>
+        <h1>No rovers available!</h1>
+    `
+}
+
+const TabContent = () => {
+    return `
+    <div  id="tabcontent">
+    </div>
     `
 }
 
 // Example of a pure function that renders infomation requested from the backend
-const ImageOfTheDay = (roverManifests) => {
+const renderInformation = () => {
 
     let {alreadyRequested} = store
     // If image does not already exist, or it is not from today -- request it again
@@ -78,8 +86,8 @@ const ImageOfTheDay = (roverManifests) => {
     // if (!apod || apod.date === today.getDate()) {
     if (!alreadyRequested) {
         // getImageOfTheDay(store)
-
-        getRoverManifests(store)
+        updateStore(store, {alreadyRequested: true})
+        // getRoverManifests(store)
 
     }
 
@@ -114,16 +122,108 @@ const getRoverManifests = async (state) => {
     })
 
     Promise.all(promises).then(res => {
-        console.log(manifests)
         updateStore(store, {roverManifests: manifests})
         let {roverManifests} = store
-        console.log(roverManifests)
+        console.log("manifests from store after promise.all()", roverManifests)
     })
 
     return manifests
 }
 
-const getRoverImages = function(state) {
-    const {manifests} = state
+const getRoverImages = async function (state, roverName) {
+    const {roverManifests} = state
+
+
+    const maxSol = roverManifests.filter((manifest) => manifest.name === roverName)[0].max_sol
+
+    await fetch(`http://localhost:3000/rovers/${roverName}/images?max_sol=${maxSol}`).then( res => {
+        return res.json()
+    }).then( data => {
+        console.log("api images", data)
+        updateStore(state, {roverImages: data.photos})
+        return data.photos
+    })
+
+}
+
+
+
+
+
+const tabActivator = function (roverManifest, roverImages) {
+    const roverInfoSection = createRoverInfoSection(roverManifest)
+    const tabContent = document.getElementById('tabcontent')
+    tabContent.innerHTML = ""
+    tabContent.appendChild(roverInfoSection)
+
+    //fetch images
+    getRoverImages(store, roverManifest.name).then( () => {
+        const {roverImages} = store
+        const roverImageSection = createRoverImageSection(roverImages)
+        tabContent.appendChild(roverImageSection)
+    })
+
+
+    //render images
+    // const {roverImages} = store
+
+}
+
+
+
+document.addEventListener('click', function (event) {
+    let target = event.target;
+
+    if (target && target.className === 'tablinks') {
+        let {roverManifests} = store
+        let {roverImages} = store
+        const roverManifest = roverManifests.filter((manifest) => {
+            target = event.target;
+
+            return manifest.name === target.innerText
+        })[0]
+        tabActivator(roverManifest, roverImages)
+    }
+})
+
+
+
+
+const createRoverInfoSection = function (roverManifest) {
+    const container = document.createElement('div')
+
+    const infoSection = document.createElement('div')
+    Object.keys(roverManifest).forEach((key) => {
+        const p = document.createElement('p');
+        const text = document.createTextNode(`${key}: ${roverManifest[key]}`);
+        p.appendChild(text);
+        infoSection.appendChild(p)
+    })
+
+
+    container.appendChild(infoSection)
+
+    console.log(container)
+    return container
+
+}
+
+
+const createRoverImageSection = function (roverImages) {
+    const container = document.createElement('div')
+
+    console.log("rover images:", roverImages)
+    const imageSection = document.createElement('div')
+
+    roverImages.forEach( image => {
+        const img = document.createElement('img');
+        img.src = image.img_src
+        imageSection.appendChild(img)
+    })
+
+    container.appendChild(imageSection)
+
+    console.log(container)
+    return container
 
 }
