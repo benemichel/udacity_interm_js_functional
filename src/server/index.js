@@ -14,20 +14,21 @@ app.use(cors())
 
 app.use('/', express.static(path.join(__dirname, '../public')))
 
-// your API calls
-app.get('/rover/:rover', async (req, res) => {
+// ----- routes -----
+app.get('/rovers/:rover', async (req, res) => {
     const params = req.params;
     const roverName  = params.rover;
 
     try {
         let missionManifest = await fetch(`https://api.nasa.gov/mars-photos/api/v1/manifests/${roverName}?api_key=${process.env.API_KEY}`)
-            .then(res => res.json())
+            .then(res => res.json().then( data => data.photo_manifest))
 
-        const maxSol = res.photo_manifest.max_sol
-
-        let lastPhotos = await fetch(`https://api.nasa.gov/mars-photos/api/v1/rovers/${roverName}/photos?sol=${maxSol}&api_key=${process.env.API_KEY}`)
-            .then(res => res.json())
-        res.send(lastPhotos)
+        // const maxSol = res.photo_manifest.max_sol
+        //
+        // let lastPhotos = await fetch(`https://api.nasa.gov/mars-photos/api/v1/rovers/${roverName}/photos?sol=${maxSol}&api_key=${process.env.API_KEY}`)
+        //     .then(res => res.json())
+        // res.send(lastPhotos)
+        res.send(missionManifest)
         res.status(200);
     } catch (err) {
         console.log('error:', err);
@@ -35,15 +36,26 @@ app.get('/rover/:rover', async (req, res) => {
 
 })
 
-// example API call
-app.get('/apod', async (req, res) => {
+app.get('/rovers/:rover/images', async (req, res) => {
+    const params = req.params;
+    const roverName  = params.rover;
+
+    const query = req.query
+    const maxSol = query.max_sol
+
+    console.log(rover)
+    console.log(maxSol)
+
     try {
-        let image = await fetch(`https://api.nasa.gov/planetary/apod?api_key=${process.env.API_KEY}`)
+        let images = await fetch(`https://api.nasa.gov/mars-photos/api/v1/rovers/${roverName}/photos?sol=${maxSol}&api_key=${process.env.API_KEY}`)
             .then(res => res.json())
-        res.send({image})
+        res.send(images)
+        res.status(200);
     } catch (err) {
         console.log('error:', err);
     }
 })
 
+
+// start server
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))

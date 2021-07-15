@@ -1,7 +1,8 @@
 let store = {
-    user: { name: "Student" },
-    apod: '',
+    user: {name: "Student"},
     rovers: ['Curiosity', 'Opportunity', 'Spirit'],
+    roverManifests: [],
+    alreadyRequested: false
 }
 
 // add our markup to the page
@@ -9,7 +10,7 @@ const root = document.getElementById('root')
 
 const updateStore = (store, newState) => {
     store = Object.assign(store, newState)
-    render(root, store)
+    // render(root, store)
 }
 
 const render = async (root, state) => {
@@ -19,7 +20,8 @@ const render = async (root, state) => {
 
 // create content
 const App = (state) => {
-    let { rovers, apod } = state
+    let {rovers} = state
+    let {roverManifests} = state
 
     return `
         <header></header>
@@ -36,7 +38,7 @@ const App = (state) => {
                     explanation are returned. These keywords could be used as auto-generated hashtags for twitter or instagram feeds;
                     but generally help with discoverability of relevant imagery.
                 </p>
-                ${ImageOfTheDay(apod)}
+                ${ImageOfTheDay(roverManifests)}
             </section>
         </main>
         <footer></footer>
@@ -64,42 +66,64 @@ const Greeting = (name) => {
 }
 
 // Example of a pure function that renders infomation requested from the backend
-const ImageOfTheDay = (apod) => {
+const ImageOfTheDay = (roverManifests) => {
 
+    let {alreadyRequested} = store
     // If image does not already exist, or it is not from today -- request it again
     const today = new Date()
-    const photodate = new Date(apod.date)
-    console.log(photodate.getDate(), today.getDate());
+    // const photodate = new Date(apod.date)
+    // console.log(photodate.getDate(), today.getDate());
+    //
+    // console.log(photodate.getDate() === today.getDate());
+    // if (!apod || apod.date === today.getDate()) {
+    if (!alreadyRequested) {
+        // getImageOfTheDay(store)
 
-    console.log(photodate.getDate() === today.getDate());
-    if (!apod || apod.date === today.getDate() ) {
-        getImageOfTheDay(store)
+        getRoverManifests(store)
+
     }
 
     // check if the photo of the day is actually type video!
-    if (apod.media_type === "video") {
-        return (`
-            <p>See today's featured video <a href="${apod.url}">here</a></p>
-            <p>${apod.title}</p>
-            <p>${apod.explanation}</p>
-        `)
-    } else {
-        return (`
-            <img src="${apod.image.url}" height="350px" width="100%" />
-            <p>${apod.image.explanation}</p>
-        `)
-    }
+    // if (apod.media_type === "video") {
+    //     return (`
+    //         <p>See today's featured video <a href="${apod.url}">here</a></p>
+    //         <p>${apod.title}</p>
+    //         <p>${apod.explanation}</p>
+    //     `)
+    // } else {
+    //     return (`
+    //         <img src="${apod.image.url}" height="350px" width="100%" />
+    //         <p>${apod.image.explanation}</p>
+    //     `)
+    // }
 }
 
-// ------------------------------------------------------  API CALLS
+// ----- API CALLS -------
+const getRoverManifests = async (state) => {
+    let {rovers} = state
+    let manifests = [];
 
-// Example API call
-const getImageOfTheDay = (state) => {
-    let { apod } = state
+    let promises = rovers.map(rover => {
+        return fetch(`http://localhost:3000/rovers/${rover}`)
+            .then(res => {
+                return res.json()
+            })
+            .then(manifest => {
+                manifests.push(manifest)
+            })
+    })
 
-    fetch(`http://localhost:3000/apod`)
-        .then(res => res.json())
-        .then(apod => updateStore(store, { apod }))
+    Promise.all(promises).then(res => {
+        console.log(manifests)
+        updateStore(store, {roverManifests: manifests})
+        let {roverManifests} = store
+        console.log(roverManifests)
+    })
 
-    return data
+    return manifests
+}
+
+const getRoverImages = function(state) {
+    const {manifests} = state
+
 }
