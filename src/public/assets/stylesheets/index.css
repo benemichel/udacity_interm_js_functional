@@ -1,8 +1,7 @@
 
 @import "resets.css";
-
-/* -------------------  MOBILE  --------------------- */
-
+@import "tabs.css";
+@import "rover_container.css";
 
 body {
   display: flex;
@@ -12,8 +11,8 @@ body {
   background-image: url("../images/Centauri_Montes_color.jpg")
 }
 
-header {
-  /* header styles */
+.title {
+  font-size: 3.6em;
 }
 
 header * {
@@ -28,52 +27,8 @@ main {
 
 }
 
-footer {
-  /* footer styles */
-}
-
-/* TABS */
-.tab {
-  overflow: hidden;
-  border: 1px solid #ccc;
-  background-color: #f1f1f1;
-}
-
-/* Style the buttons that are used to open the tab content */
-.tab button {
-  background-color: cornflowerblue;
-  float: left;
-  border: none;
-  outline: none;
-  cursor: pointer;
-  padding: 14px 16px;
-  transition: 0.3s;
-}
-
-/* Change background color of buttons on hover */
-.tab button:hover {
-  background-color: #ddd;
-}
-
-/* Create an active/current tablink class */
-.tab button.active {
-  background-color: #ccc;
-}
-
-
-/* -------------------  TABLET  --------------------- */
-@media (min-width: 768px) {
-  /* use mobile */
-}
-
-/* -------------------  DESKTOP  -------------------- */
-
-@media (min-width: 1224px) {
-  /* use mobile */
-}
-
-/* -------------------  LARGE SCREENS  -------------- */
-
-@media (min-width: 1824px) {
-  /* use mobile */
+.control_panel {
+  background-color: #6b463ec0;
+  min-height: 60vh;
+  min-width: 80vw;
 }
