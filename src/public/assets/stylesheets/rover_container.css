@@ -14,6 +14,10 @@
     flex-wrap: wrap;
 }
 
+.rover_images img {
+    margin-bottom: 10px;
+}
+
 @media(min-width:769px) {
     .rover_images {
         justify-content: space-around;

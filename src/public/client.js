@@ -1,47 +1,41 @@
+// store
 let store = {
-    rovers: ['Curiosity', 'Opportunity', 'Spirit'],
-    roverManifests: [],
+    rovers: Immutable.List(['Curiosity', 'Opportunity', 'Spirit']),
+    roverManifests: Immutable.List([]),
     alreadyRequested: false,
-    roverImages: [],
+    roverImages: Immutable.List([]),
 }
-
-// add our markup to the page
-const root = document.getElementById('root')
 
 const updateStore = (store, newState) => {
     store = Object.assign(store, newState)
-    console.log("store update with:", newState)
-    // render(root, store)
 }
 
+// render App
 const render = async (root, state) => {
     // render app with updated state
     root.innerHTML = App(state)
 }
 
-
-// create content
 const App = (state) => {
-
     return `
         <header>${Header()}</header>
         <main>
-            
             <section class="control_panel">
                 ${Tabs(state.rovers)}
                 ${TabContent()}
-           
             </section>
         </main>
         <footer></footer>
     `
 }
 
-// listening for load event because page should load before any JS is called
-window.addEventListener('load', () => {
-    render(root, store)
-})
-
+(function load() {
+    window.addEventListener('load', () => {
+            const root = document.getElementById('root')
+            render(root, store)
+        }
+    )
+})()
 
 // ------------------------------------------------------  COMPONENTS
 
@@ -53,21 +47,16 @@ const Header = () => {
 
 const Tabs = (rovers) => {
     if (rovers) {
-
-        const tablinks = [];
+        const tablinks = []
         rovers.forEach(rover => {
-            tablinks.push(`<button class="tablinks">${rover}</button>`)
+            tablinks.push(`<button class="tablinks" disabled>${rover}</button>`)
         })
         return `<div class="tab">${tablinks.join("")} </div> `
     }
-
-    return `
-        <h1>No rovers available!</h1>
-    `
+    return ` <h1>No rovers available!</h1> `
 }
 
 const TabContent = () => {
-
     renderInformation()
     return `
     <div  id="tabcontent">
@@ -75,60 +64,35 @@ const TabContent = () => {
     `
 }
 
-// Example of a pure function that renders infomation requested from the backend
-const renderInformation = () => {
 
-    let {alreadyRequested} = store
-    // If image does not already exist, or it is not from today -- request it again
-    const today = new Date()
-    // const photodate = new Date(apod.date)
-    // console.log(photodate.getDate(), today.getDate());
-    //
-    // console.log(photodate.getDate() === today.getDate());
-    // if (!apod || apod.date === today.getDate()) {
+const renderInformation = () => {
+    const {alreadyRequested} = store
     if (!alreadyRequested) {
-        // getImageOfTheDay(store)
         updateStore(store, {alreadyRequested: true})
         getRoverManifests(store)
-
     }
-
-    // check if the photo of the day is actually type video!
-    // if (apod.media_type === "video") {
-    //     return (`
-    //         <p>See today's featured video <a href="${apod.url}">here</a></p>
-    //         <p>${apod.title}</p>
-    //         <p>${apod.explanation}</p>
-    //     `)
-    // } else {
-    //     return (`
-    //         <img src="${apod.image.url}" height="350px" width="100%" />
-    //         <p>${apod.image.explanation}</p>
-    //     `)
-    // }
 }
 
 // ----- API CALLS -------
 const getRoverManifests = async (state) => {
-    let {rovers} = state
-    let manifests = [];
+    const {rovers} = state
+    let manifests = Immutable.List([])
 
     // cache
-    if (state.roverManifests.length === 0){
-        let promises = rovers.map(rover => {
+    if (state.roverManifests.size === 0) {
+        const promises = rovers.map(rover => {
             return fetch(`http://localhost:3000/rovers/${rover}`)
                 .then(res => {
                     return res.json()
                 })
                 .then(manifest => {
-                    manifests.push(manifest)
+                    manifests = manifests.push(manifest)
                 })
-        })
+        }).toJS()
 
         Promise.all(promises).then(res => {
             updateStore(store, {roverManifests: manifests})
-            let {roverManifests} = store
-            console.log("manifests from store after promise.all()", roverManifests)
+            Array.from(document.getElementsByClassName('tablinks')).forEach( btn => btn.disabled = false)
         })
     }
 
@@ -137,27 +101,22 @@ const getRoverManifests = async (state) => {
 
 const getRoverImages = async function (state, roverName) {
     const {roverManifests} = state
-    const { roverImages } = state
-    console.log("roverImages before", roverImages)
-
-
-    const maxSol = roverManifests.filter((manifest) => manifest.name === roverName)[0].max_sol
+    const {roverImages} = state
+    const maxSol = roverManifests.filter((manifest) => manifest.name === roverName).get(0).max_sol
 
     // cache
-    if (roverImages.length === 0 || roverImages.filter( image => image.rover.name === roverName).length === 0){
-        await fetch(`http://localhost:3000/rovers/${roverName}/images?max_sol=${maxSol}`).then( res => {
+    if (roverImages.size === 0 || roverImages.filter(image => image.rover.name === roverName).size === 0) {
+        await fetch(`http://localhost:3000/rovers/${roverName}/images?max_sol=${maxSol}`).then(res => {
             return res.json()
-        }).then( data => {
-            console.log("api images", data)
-            updateStore(state, {roverImages: roverImages.concat(data.photos)})
-            return data.photos
+        }).then(data => {
+            updateStore(state, {roverImages: roverImages.concat(data)})
+            return data
         })
     }
-
 }
 
-const tabActivator = function (roverManifest, roverImages) {
-    const roverInfoSection = createRoverInfoSection(roverManifest)
+const tabActivator = function (roverManifest) {
+    const roverInfoSection = createRoverInfoSection(roverManifest, createNodeWithInfo)
     const tabContent = document.getElementById('tabcontent')
     const roverContainer = document.createElement('div')
 
@@ -165,55 +124,43 @@ const tabActivator = function (roverManifest, roverImages) {
     roverContainer.appendChild(roverInfoSection)
 
     //fetch images
-    getRoverImages(store, roverManifest.name).then( () => {
+    getRoverImages(store, roverManifest.name).then(() => {
         const {roverImages} = store
-
         const roverImagesForRover = roverImages.filter((image) => image.rover.name === roverManifest.name)
-        const roverImageSection = createRoverImageSection(roverImagesForRover)
+        const roverImageSection = createRoverImageSection(roverImagesForRover, createImage)
         roverContainer.appendChild(roverImageSection)
     })
 
     tabContent.innerHTML = ""
     tabContent.appendChild(roverContainer)
-
-    //render images
-    // const {roverImages} = store
-
 }
 
 
-
 document.addEventListener('click', function (event) {
-    let target = event.target;
+    const target = event.target
 
     if (target && target.className === 'tablinks') {
-        let {roverManifests} = store
-        let {roverImages} = store
+        const {roverManifests} = store
+        const {roverImages} = store
         const roverManifest = roverManifests.filter((manifest) => {
-            target = event.target;
-
-            return manifest.name === target.innerText
-        })[0]
+            return manifest.name === event.target.innerText
+        }).get(0)
         tabActivator(roverManifest, roverImages)
     }
 })
 
+const createNodeWithInfo = function (text) {
+    //higher order function
+    const p = document.createElement('p')
+    const textNode = document.createTextNode(text)
+    p.appendChild(textNode)
+    return p
+}
 
-
-
-const createRoverInfoSection = function (roverManifest) {
+const createRoverInfoSection = function (roverManifest, createNodeWithInfo) {
     const container = document.createElement('div')
     container.classList.add("rover_info")
-
     const infoSection = document.createElement('div')
-
-    const createNodeWithInfo = function(text) {
-        const p = document.createElement('p')
-        const textNode = document.createTextNode(text)
-        p.appendChild(textNode)
-        return p
-
-    }
 
     infoSection.appendChild(createNodeWithInfo(`Name: ${roverManifest.name}`))
     infoSection.appendChild(createNodeWithInfo(`Landed: ${roverManifest.landing_date}`))
@@ -223,22 +170,20 @@ const createRoverInfoSection = function (roverManifest) {
 
     container.appendChild(infoSection)
     return container
-
 }
 
-
-const createRoverImageSection = function (roverImages) {
+const createImage = function (src) {
+    //higher order function
+    const img = document.createElement('img')
+    img.src = src
+    return img
+}
+const createRoverImageSection = function (roverImages, createImage) {
     const container = document.createElement('div')
     container.classList.add("rover_images")
 
-
-    roverImages.forEach( image => {
-        const img = document.createElement('img');
-        img.src = image.img_src
-        container.appendChild(img)
+    roverImages.forEach(image => {
+        container.appendChild(createImage(image.img_src))
     })
-
-    console.log(container)
     return container
-
 }

@@ -16,14 +16,13 @@ app.use('/', express.static(path.join(__dirname, '../public')))
 
 // ----- routes -----
 app.get('/rovers/:rover', async (req, res) => {
-    const params = req.params;
-    const roverName  = params.rover;
+    const params = req.params
+    const roverName = params.rover
 
     try {
         let missionManifest = await fetch(`https://api.nasa.gov/mars-photos/api/v1/manifests/${roverName}?api_key=${process.env.API_KEY}`)
-            .then(res => res.json().then( data => {
+            .then(res => res.json().then(data => {
                 const manifest = data.photo_manifest
-
                 return {
                     name: manifest.name,
                     landing_date: manifest.landing_date,
@@ -33,34 +32,37 @@ app.get('/rovers/:rover', async (req, res) => {
                     status: manifest.status
                 }
             }))
-
         res.send(missionManifest)
-        res.status(200);
+        res.status(200)
     } catch (err) {
-        console.log('error:', err);
+        res.status(500)
     }
 
 })
 
-app.get('/rovers/:rover/images', async (req, res) => {
-    const params = req.params;
-    const roverName  = params.rover;
-
+app.get('/rovers/:rover/images', (req, res) => {
+    const params = req.params
+    const roverName = params.rover
     const query = req.query
     const maxSol = query.max_sol
 
-
-    try {
-        let images = await fetch(`https://api.nasa.gov/mars-photos/api/v1/rovers/${roverName}/photos?sol=${maxSol}&api_key=${process.env.API_KEY}`)
-            .then(res => res.json())
-        res.send(images)
-        res.status(200);
-    } catch (err) {
-        console.log('error:', err);
-        res.status(500);
-    }
+    fetch(`https://api.nasa.gov/mars-photos/api/v1/rovers/${roverName}/photos?sol=${maxSol}&api_key=${process.env.API_KEY}`)
+        .then(res => res.json()).then(images => {
+        const photos = images.photos
+        const photosMapped = photos.map(image => {
+            return {
+                img_src: image.img_src,
+                rover: image.rover,
+                id: image.id
+            }
+        })
+        res.send(photosMapped)
+        res.status(200)
+    }).catch(err => {
+        res.send(err)
+        res.status(500)
+    })
 })
-
 
 // start server
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
